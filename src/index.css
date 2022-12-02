@@ -4,14 +4,14 @@
 
 @font-face {
     font-family: 'InterRegular';
-    src: url('assets/Inter-Regular.ttf') format('truetype');
+    src: url('Inter-Regular.ttf') format('truetype');
     font-weight: 400;
     font-style: normal;
 }
 
 @font-face {
     font-family: 'InterSemiBold';
-    src: url('assets/Inter-SemiBold.ttf') format('truetype');
+    src: url('Inter-SemiBold.ttf') format('truetype');
     font-weight: 600;
     font-style: normal;
 }
