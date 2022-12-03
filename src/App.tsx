@@ -52,7 +52,7 @@ function App() {
 
   // Computeds
   const isEmptyRepo = repoUrl.trim().length === 0;
-  const fetchingRepoInfo = repoInfo.isLoading && !repoInfo.isInitialLoading && !isEmptyRepo;
+  const fetchingRepoInfo = !isEmptyRepo && repoInfo.isLoading;
   const dataDefined = typeof repoInfo.data === 'object';
   const hasBranches = branchInfo.isFetched && branchInfo.data && branchInfo.data.length > 0;
 
