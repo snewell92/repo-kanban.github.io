@@ -1,26 +1,50 @@
-import { useRef, useState } from 'react'
-import { useEffect } from 'react'
-import { BranchCard } from './BranchCard';
+import { useRef, useState, useEffect, KeyboardEventHandler } from 'react';
 import { Star } from "./Star";
+import { useRepoInfo, useBranchInfo } from "./api/github"
+import { Kanban } from './Kanban';
 
 // Theme provider is the HTML DOM Node's data-theme attribute
 const $htmlElement = document.documentElement;
 
-function setTheme(themeName: string) {
-  $htmlElement.setAttribute('data-theme', themeName);
-}
-
+/** Synchronize theme radio btn state to HTML DOM html attribute */
 function useDOMThemeSwitcher(darkThemeOn: boolean) {
   useEffect(
-    () => setTheme(darkThemeOn ? "dark" : "light"),
+    () => $htmlElement.setAttribute(
+      'data-theme',
+      darkThemeOn ? "dark" : "light"
+    ),
     [darkThemeOn]
   );
+}
+
+const onEnter = (fn: Function): KeyboardEventHandler<HTMLInputElement> => (evt) => {
+  if (evt.key === "Enter") {
+    fn();
+  }
+}
+
+const friendlyNumber = (num: number) => {
+  if (num < 1_000) {
+    return num;
+  }
+
+  if (num < 1_000_000) {
+    return (num / 1000).toFixed(1) + " K";
+  }
+
+  if (num < 1_000_000_000) {
+    return (num / 1_000_000).toFixed(1) + " M";
+  }
+
+  return "OVER A BILLION";
 }
 
 function App() {
   // State
   const [repoUrl, setRepoUrl] = useState("");
   const [darkThemeOn, setDarkThemeOn] = useState(true);
+  const repoInfo = useRepoInfo(repoUrl);
+  const branchInfo = useBranchInfo(repoInfo.data?.url ?? "");
 
   // Effects & Refs
   useDOMThemeSwitcher(darkThemeOn);
@@ -28,6 +52,8 @@ function App() {
 
   // Computeds
   const isEmptyRepo = repoUrl.trim().length === 0;
+  const dataDefined = typeof repoInfo.data === 'object';
+  const hasBranches = branchInfo.isFetched && branchInfo.data && branchInfo.data.length > 0;
 
   // Actions
   function toggleDarkTheme() {
@@ -35,13 +61,11 @@ function App() {
   };
 
   function submitRepoURl() {
-    if (!inputRef || inputRef.current == null) {
-      return;
+    if (!!inputRef && inputRef.current != null) {
+      setRepoUrl(inputRef.current.value);
     }
 
-    // TODO - validate or handle errors when using the GH API
-    // TODO - handle loading state while using the GH API
-    setRepoUrl(inputRef.current.value);
+    return false;
   }
 
   function resetRepoUrl() {
@@ -55,7 +79,7 @@ function App() {
         <input title="Toggle Dark/Light Themes" type="checkbox" className="toggle" checked={darkThemeOn} onChange={toggleDarkTheme} />
       </div>
       {
-        isEmptyRepo && (
+        (isEmptyRepo || !repoInfo.isFetched || repoInfo.isError) && (
           <>
             <div className="block md:hidden z-10">
               <div className="pt-[15vh] pl-8 relative">
@@ -63,7 +87,7 @@ function App() {
                 <p className="pl-6 text-xl inline-block">CodeSandbox</p>
               </div>
             </div>
-            <div className="flex flex-row mx-8 md:ml-0">
+            <div className="flex mx-8 md:ml-0">
               <div className="hidden sm:hidden md:block basis-1/3 text-left pl-8 min-w-fit">
                 <div className="pt-[30vh] relative">
                   <span className="absolute bottom-1 w-5 h-5 border-2 inline-block border-primary border-solid"></span>
@@ -71,64 +95,44 @@ function App() {
                 </div>
               </div>
               <div className="basis-full md:basis-2/3 min-w-min">
-                <form className="pt-16 md:pt-[30vh] w-full" onSubmit={submitRepoURl}>
+                <div className="pt-16 md:pt-[30vh] w-full" >
                   <h1 className="font-interBold tracking-tighter text-5xl max-w-xl min-w-min">Start by pasting the repository URL.</h1>
                   <div className="mt-24 flex">
-                    <input tabIndex={1} ref={inputRef} type="text" placeholder="https://" className="pt-8 input input-ghost basis-4/5 flex-1 max-w-[90%] min-w-fit border-t-0 border-r-0 border-l-0 border-b-1 rounded-none border-primary h-8 pb-6 font-inter font-thin" />
-                    <button tabIndex={2} type="submit" className="basis-1/5 flex-none my-auto grow-0 w-fit ml-2 btn bg-base-100 font-inter font-thin tracking-tightest normal-case focus:bg-neutral">Submit</button>
+                    <input disabled={repoInfo.isLoading} tabIndex={1} ref={inputRef} type="text" placeholder="https://" onKeyDown={onEnter(submitRepoURl)} className="pt-8 input input-ghost basis-4/5 flex-1 max-w-[90%] min-w-fit border-t-0 border-r-0 border-l-0 border-b-1 rounded-none border-primary h-8 pb-6 font-inter font-thin" />
+                    <button disabled={repoInfo.isLoading} tabIndex={2} onClick={submitRepoURl} className={`basis-1/5 flex-none my-auto grow-0 w-fit ml-2 btn bg-base-100 font-inter font-thin tracking-tightest normal-case focus:bg-neutral ${repoInfo.isLoading && 'loading'}`}>Submit</button>
                   </div>
-                </form>
+                  <div>
+                    {(!isEmptyRepo && repoInfo.isError) && <p className="text-error mt-4 text-sm font-thin tracking-tightest">Oops! Someting went wrong. Try again!</p>}
+                  </div>
+                </div>
               </div>
             </div>
           </>
         )
       }
       {
-        !isEmptyRepo && (
+        (!isEmptyRepo && repoInfo.isFetched && dataDefined) && (
         <>
-          <div className="grid grid-cols-3 gap-4 pt-16 justify-start">
-            <div>
+          <div className="grid grid-cols-6 gap-4 pt-16 justify-start">
+            <div className="col-span-1">
               <button title="Go Back" onClick={resetRepoUrl} className="w-4 h-4 ml-12">
-                <svg height="50" width="50" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="stroke-secondary hover:stroke-primary scale-50" >
+                <svg height="50" width="50" fill="none" stroke-linecap="round" stroke-linejoin="round" className="stroke-2 stroke-secondary hover:stroke-primary scale-50" >
                   <polyline points="4,25 25,46 4,25 25,4 4,25 48,25"/>
                 </svg>
               </button>
             </div>
 
-            <div>
-              <h1 className="text-5xl font-interBold break-words sm:break-normal">sandpack</h1>
-              <p className="font-inter tracking-tightest font-thin pt-6 text-sm">A description</p>
+            <div className="col-span-3 justify-self-center max-w-[14rem]">
+              <h1 className="text-5xl font-interBold break-words sm:break-normal">{repoInfo.data.full_name}</h1>
+              <p className="font-inter tracking-tightest font-thin pt-6 text-sm">{repoInfo.data.description}</p>
             </div>
 
-            <div className="justify-self-end pr-12">
+            <div className="col-span-2 justify-self-end pr-8">
               <Star className="w-5" />
-              <span className="pl-2">1.8k</span>
+              <span className="pl-1">{friendlyNumber(repoInfo.data.stargazers_count)}</span>
             </div>
           </div>
-          <div className="mt-36 mx-12 grid grid-cols-3 gap-1 justify-center min-w-fit overflow-x-scroll">
-            <div className="px-2">
-              <p className="text-xs tracking-tightest">In progress (9)</p>
-              <ol className="w-full mt-6 space-y-4">
-                <BranchCard branchName="feat/load-csb-data" column="InProgress" />
-                <BranchCard branchName="fix/data-load" column="InProgress" />
-                <BranchCard branchName="feat/refactor" column="InProgress" />
-              </ol>
-            </div>
-            <div className="px-2">
-              <p className="text-xs tracking-tightest">Review (9)</p>
-              <ol className="w-full mt-6 space-y-4">
-                <BranchCard branchName="feat/reload" column="Review" />
-                <BranchCard branchName="fix/plat-2424" column="Review" />
-                <BranchCard branchName="fix/secondary-theme" column="Review" />
-              </ol>
-            </div>
-            <div className="px-2">
-              <p className="text-xs tracking-tightest">Ready to Merge (9)</p>
-              <ol className="w-full mt-6 space-y-4">
-                <BranchCard branchName="hotfix/fix-editor-highlight" column="ReadyToMerge" />
-              </ol>
-            </div>
-          </div>
+          {hasBranches && <Kanban branches={branchInfo.data} />}
         </>
         )
       }
