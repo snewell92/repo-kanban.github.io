@@ -52,6 +52,7 @@ function App() {
 
   // Computeds
   const isEmptyRepo = repoUrl.trim().length === 0;
+  const fetchingRepoInfo = repoInfo.isLoading && !repoInfo.isInitialLoading && !isEmptyRepo;
   const dataDefined = typeof repoInfo.data === 'object';
   const hasBranches = branchInfo.isFetched && branchInfo.data && branchInfo.data.length > 0;
 
@@ -98,8 +99,8 @@ function App() {
                 <div className="pt-16 md:pt-[30vh] w-full" >
                   <h1 className="font-interBold tracking-tighter text-5xl max-w-xl min-w-min">Start by pasting the repository URL.</h1>
                   <div className="mt-24 flex">
-                    <input disabled={repoInfo.isLoading} tabIndex={1} ref={inputRef} type="text" placeholder="https://" onKeyDown={onEnter(submitRepoURl)} className="pt-8 input input-ghost basis-4/5 flex-1 max-w-[90%] min-w-fit border-t-0 border-r-0 border-l-0 border-b-1 rounded-none border-primary h-8 pb-6 font-inter font-thin" />
-                    <button disabled={repoInfo.isLoading} tabIndex={2} onClick={submitRepoURl} className={`basis-1/5 flex-none my-auto grow-0 w-fit ml-2 btn bg-base-100 font-inter font-thin tracking-tightest normal-case focus:bg-neutral ${repoInfo.isLoading && 'loading'}`}>Submit</button>
+                    <input disabled={fetchingRepoInfo} tabIndex={1} ref={inputRef} type="text" placeholder="https://" onKeyDown={onEnter(submitRepoURl)} className="pt-8 input input-ghost basis-4/5 flex-1 max-w-[90%] min-w-fit border-t-0 border-r-0 border-l-0 border-b-1 rounded-none border-primary h-8 pb-6 font-inter font-thin" />
+                    <button disabled={fetchingRepoInfo} tabIndex={2} onClick={submitRepoURl} className={`basis-1/5 flex-none my-auto grow-0 w-fit ml-2 btn bg-base-100 font-inter font-thin tracking-tightest normal-case focus:bg-neutral ${fetchingRepoInfo && 'loading'}`}>Submit</button>
                   </div>
                   <div>
                     {(!isEmptyRepo && repoInfo.isError) && <p className="text-error mt-4 text-sm font-thin tracking-tightest">Oops! Someting went wrong. Try again!</p>}
