@@ -133,7 +133,7 @@ function App() {
               <span className="pl-1">{friendlyNumber(repoInfo.data.stargazers_count)}</span>
             </div>
           </div>
-          {hasBranches && <Kanban branches={branchInfo.data} />}
+          {hasBranches && <Kanban repoUrl={repoInfo.data?.url ?? ""} branches={branchInfo.data} />}
         </>
         )
       }
